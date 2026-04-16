@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mixture Modeling Presentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Arimo:wght@400;700&family=Azeret+Mono:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* CORE SETUP - LATEX MINIMALIST AESTHETIC */
+        * { box-sizing: border-box; }
+        body {
+            background-color: #f0f2f5;
+            display: grid;
+            gap: 30px;
+            grid-template-columns: 1fr;
+            margin: 0;
+            padding: 40px 0;
+            place-items: center;
+        }
+
+        .slide-container {
+            width: 1280px;
+            height: 720px;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 50px 80px;
+            position: relative;
+            font-family: 'Arimo', sans-serif;
+            color: #2d3436;
+            border: 1px solid #dcdde1;
+        }
+
+        /* Header / Footer line similar to Beamer themes */
+        .slide-container::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, #2c3e50 0%, #34495e 100%);
+        }
+
+        /* TYPOGRAPHY */
+        h1 { font-size: 64px; color: #2c3e50; margin: 0; font-weight: 700; line-height: 1.1; }
+        .slide-title { 
+            font-size: 42px; 
+            color: #2c3e50; 
+            margin-bottom: 30px; 
+            font-weight: 700; 
+            border-left: 8px solid #3498db;
+            padding-left: 20px;
+            line-height: 1;
+        }
+        h3 { font-size: 30px; color: #34495e; margin-bottom: 15px; font-weight: 700; }
+        p, li { font-size: 24px; line-height: 1.5; color: #636e72; margin-bottom: 10px; }
+        
+        /* Elements */
+        .mono { font-family: 'Azeret Mono', monospace; background: #f1f2f6; padding: 2px 8px; border-radius: 4px; font-size: 0.9em; color: #e84118; }
+        .accent { color: #3498db; font-weight: 700; }
+        
+        .content-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: start; width: 100%; }
+        .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; width: 100%; }
+
+        /* Formula styling */
+        .math-box { 
+            background: #f8f9fa; 
+            border: 1px solid #dfe6e9; 
+            padding: 25px; 
+            border-radius: 8px; 
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        /* List styling */
+        ul { list-style: none; padding: 0; }
+        li::before { content: "•"; color: #3498db; font-weight: bold; display: inline-block; width: 1em; margin-left: -1em; }
+
+        /* Chart placeholder */
+        .chart-row { display: flex; align-items: center; margin-bottom: 15px; }
+        .bar-label { flex: 0 0 250px; font-size: 22px; font-weight: 700; }
+        .bar-outer { flex-grow: 1; height: 35px; background: #ecf0f1; border-radius: 4px; overflow: hidden; }
+        .bar-inner { height: 100%; background: #3498db; transition: width 1s; }
+
+        /* Images */
+        .image-box { border-radius: 4px; border: 1px solid #dfe6e9; overflow: hidden; height: 300px; width: 100%; }
+        .image-box img { width: 100%; height: 100%; object-fit: cover; }
+    </style>
+</head>
+<body>
+
+<div class="slide-container" id="slide1">
+    <div class="content-area" style="justify-content: center; text-align: left;">
+        <p style="text-transform: uppercase; letter-spacing: 2px; color: #3498db; font-weight: 700; margin-bottom: 10px;">Adaptive Bayesian Inference</p>
+        <h1>Mixture Modeling in <br>Material Science</h1>
+        <div style="height: 4px; width: 100px; background: #3498db; margin: 30px 0;"></div>
+        <p style="font-size: 28px;">Bc. Tomáš Procházka, Ing. Miroslav Kárný DrSc.</p>
+        <p style="margin-top: 40px; color: #2c3e50;">Department of Adaptive Systems, Institute of Information Theory and Automation,Czech Academy of Sciences
+</p>
+    </div>
+</div>
+
+<div class="slide-container" id="slide2">
+    <h2 class="slide-title">Introduction to the Problem</h2>
+    <div class="content-area">
+        <div class="two-column">
+            <div>
+                <h3>Physical Machine Settings</h3>
+                <ul>
+                    <li>Materials science experiments involve expensive, time-consuming physical runs.</li>
+                    <li><span class="accent">The Problem:</span> Very low amounts of data relative to the configuration space.</li>
+                    <li>Standard regression models overfit or fail to capture LOCALIZED variances.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="slide-container" id="slide3">
+    <h2 class="slide-title">Problem Definition: g, z, y</h2>
+    <div class="content-area">
+        <div class="two-column">
+            <div>
+                <h3>Input Features</h3>
+                <p><strong>Settings Vector <span class="mono">g</span>:</strong> Categorical</p>
+                <p style="font-size: 20px; color: #7f8c8d;">e.g., <span class="mono">[frequency, deposition time, substrate, ...]</span></p>
+                
+                <p style="margin-top: 20px;"><strong>Regressors <span class="mono">z</span>:</strong> Numerical</p>
+                <p style="font-size: 20px; color: #7f8c8d;">Physical continuous inputs (initial and working pressure).</p>
+            </div>
+            <div>
+                <h3>Output Target</h3>
+                <p><strong>Response <span class="mono">y</span>:</strong> numerical</p>
+                <p style="font-size: 20px; color: #7f8c8d;">Observed physical outcome of the setting (thickness).</p>
+                
+                <div class="math-box" style="margin-top: 20px;">
+                    <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+                        <msub>
+                            <mover>
+                            <mi>y</mi>
+                            <mo>^</mo>
+                            </mover>
+                        </msub>
+                        <mo>&#x223C;</mo>
+                        <mi>p</mi>
+                        <mo stretchy="false">(</mo>
+                        <mi>y</mi>
+                        <mo fence="false" stretchy="false">|</mo>
+                        <mi>z, g, &#x398</mi>
+                        <mo stretchy="false">)</mo>
+                    </math>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="slide-container" id="slide4">
+    <h2 class="slide-title">Approach: Mixed Sub-Models</h2>
+    <div class="content-area">
+        <p>Instead of one complex model, we build a <span class="accent">Mixture of Experts</span>:</p>
+        <div class="two-column" style="margin-top: 20px;">
+            <div>
+                <h3>Sub-Model Unit</h3>
+                <ul>
+                    <li>For each category in each entry of <span class="mono">g</span>: <span class="mono">g_ij</span>.</li>
+                    <li>Simple 1D Linear Adaptive Model.</li>
+                    <li>Initiated with <span class="accent">non-informative priors</span>.</li>
+                    <li>Updates via <strong>recursive Bayesian estimation</strong>.</li>
+                </ul>
+            </div>
+            <div>
+                <h3>Adaptive Learning</h3>
+                <ul>
+                    <li>Employs <span class="accent">Optimal Forgetting</span>.</li>
+                    <li>Adapts to system shifts automatically.</li>
+                    <li>Calculates localized sufficient statistics.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="slide-container" id="slide5">
+    <h2 class="slide-title">The Mixing Logic</h2>
+    <div class="content-area">
+        <p>Combining sub-models into a unified forecast by <span class="accent">minimizing cross-entropy</span>:</p>
+        <div class="math-box">
+            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block" style="font-size: 1.2em; font-weight: bold;">
+                <mi>F</mi>
+                <mo stretchy="false">(</mo>
+                <msub>
+                    <mi>&#x3D5;</mi>
+                    <mi>i</mi>
+                </msub>
+                <mo stretchy="false">)</mo>
+                <mo>=</mo>
+                <mtext>KLD</mtext>
+                <mo stretchy="false">(</mo>
+                <msub>
+                    <mi>&#x3D5;</mi>
+                    <mi>i</mi>
+                </msub>
+                <mo>&#x2225;</mo>
+                <msub>
+                    <mi>&#x3D5;</mi>
+                    <mrow>
+                    <mi>i</mi>
+                    <mo>,</mo>
+                    <mn>0</mn>
+                    </mrow>
+                </msub>
+                <mo stretchy="false">)</mo>
+                <mo>&#x2212;</mo>
+                <mo>&#x222B;</mo>
+                <munderover>
+                    <mo>&#x220F;</mo>
+                    <mrow>
+                    <mi>j</mi>
+                    <mo>=</mo>
+                    <mn>1</mn>
+                    </mrow>
+                    <msub>
+                    <mi>l</mi>
+                    <mi>g</mi>
+                    </msub>
+                </munderover>
+                <mi>p</mi>
+                <mo stretchy="false">(</mo>
+                <msub>
+                    <mi>y</mi>
+                    <mi>i</mi>
+                </msub>
+                <mo fence="false" stretchy="false">|</mo>
+                <msub>
+                    <mi>z</mi>
+                    <mi>i</mi>
+                </msub>
+                <mo>,</mo>
+                <msub>
+                    <mi>g</mi>
+                    <mrow>
+                    <mi>i</mi>
+                    <mi>j</mi>
+                    </mrow>
+                </msub>
+                <mo>,</mo>
+                <msub>
+                    <mi>&#x3B8;</mi>
+                    <mrow>
+                    <mi>i</mi>
+                    <mi>j</mi>
+                    </mrow>
+                </msub>
+                <mo stretchy="false">)</mo>
+                <mi>d</mi>
+                <mi>y</mi>
+                </math>
+        </div>
+        <p style="text-align: center; font-size: 20px;">Optimization yields <span class="accent">Optimal Mixing Weights</span> (&#x3D5;).</p>
+        <ul>
+            <li>Compresses complex posterior logic into a single predictive distribution.</li>
+        </ul>
+       <math xmlns="http://www.w3.org/1998/Math/MathML" display="block" style="font-size: 1.2em; font-weight: bold;">
+     <msub>
+    <mover>
+      <mi>y</mi>
+      <mo>^</mo>
+    </mover>
+    <mi>i</mi>
+  </msub>
+        <mo>=</mo>
+        <munderover>
+            <mo>&#x2211;</mo>
+            <mrow>
+            <mi>j</mi>
+            <mo>=</mo>
+            <mn>1</mn>
+            </mrow>
+            <msub>
+            <mi>l</mi>
+            <mi>g</mi>
+            </msub>
+        </munderover>
+        <msub>
+            <mi>&#x3D5;</mi>
+            <mi>j</mi>
+        </msub>
+        <msub>
+            <mover>
+            <mi>y</mi>
+            <mo>^</mo>
+            </mover>
+            <mrow>
+            <mi>i</mi>
+            <mi>j</mi>
+            </mrow>
+        </msub>
+        </math>
+            </div>
+</div>
+
+<div class="slide-container" id="slide6">
+    <h2 class="slide-title">The Goal: Recommendation</h2>
+    <div class="content-area">
+        <div class="two-column">
+            <div>
+                <h3>Inverse Optimization</h3>
+                <p>Search for the <span class="accent">optimal g</span>.</p>
+                <ul>
+                    <li>Given a target response <span class="mono">y*</span>.</li>
+                    <li>Exhaustive search over categorical combinations.</li>
+                    <li>Recommends settings to achieve the physical goal.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="slide-container" id="slide7">
+    <h2 class="slide-title">Validation: Leave-One-Out (LOO)</h2>
+    <div class="content-area">
+        <h3>Methodology</h3>
+        <ol>
+            <li>Hold out one observation y, z, g.</li>
+            <li>Train the mixture on all remaining N-1 points.</li>
+            <li>Predict the held-out point using mixed modeling.</li>
+            <li>Repeat for all N observations.</li>
+        </ol>
+        <p style="margin-top: 20px;">Benchmarked against two standard references:</p>
+        <ul>
+            <li><strong>Mean Baseline:</strong> Average of N-1 observations.</li>
+            <li><strong>Simple OLS:</strong> Ordinary Least Squares on continuous z only.</li>
+        </ul>
+    </div>
+</div>
+
+<div class="slide-container" id="slide8">
+    <h2 class="slide-title">Early Results: MAE Benchmarking</h2>
+    <div class="content-area">
+        <div class="chart-row">
+            <div class="bar-label">Mean Baseline</div>
+            <div class="bar-outer"><div class="bar-inner" style="width: 51%; background: #95a5a6;"></div></div>
+            <div style="margin-left: 10px; font-weight: 700;">454.34</div>
+        </div>
+        <div class="chart-row">
+            <div class="bar-label">Simple OLS</div>
+            <div class="bar-outer"><div class="bar-inner" style="width: 100%; background: #7f8c8d;"></div></div>
+            <div style="margin-left: 10px; font-weight: 700;">881.26</div>
+        </div>
+        <div class="chart-row" style="margin-top: 20px;">
+            <div class="bar-label" style="color: #3498db;">Proposed Mixture</div>
+            <div class="bar-outer"><div class="bar-inner" style="width: 37%;"></div></div>
+            <div style="margin-left: 10px; font-weight: 700; color: #3498db;">323.22</div>
+        </div>
+        <p style="margin-top: 40px; font-weight: 700; color: #27ae60;">Result: Order-of-magnitude reduction in prediction error.</p>
+    </div>
+</div>
+
+<div class="slide-container" id="slide9">
+    <div class="content-area" style="justify-content: center; text-align: center;">
+        <h2 style="font-size: 80px; margin-bottom: 20px;">Thank you</h2>
+        <p style="font-size: 32px; color: #3498db;">Questions?</p>
+        
+        <div style="margin-top: 50px; text-align: left; padding: 30px; border-top: 1px solid #dfe6e9; width: 80%; margin-left: auto; margin-right: auto;">
+            <h3 style="font-size: 20px; color: #b2bec3;">Bibliography</h3>
+            <p style="font-size: 16px;">[1] Kárný, M. & Procházka, T. "Recursive Estimation of ARX Model with Parameters Dependent on High-Dimensional Discrete Regressors."</p>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
+```
