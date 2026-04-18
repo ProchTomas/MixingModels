@@ -47,7 +47,7 @@
         }
 
         /* TYPOGRAPHY */
-        h1 { font-size: 64px; color: #2c3e50; margin: 0; font-weight: 700; line-height: 1.1; }
+        h1 { font-size: 32px; color: #2c3e50; margin: 0; font-weight: 700; line-height: 1.1; }
         .slide-title { 
             font-size: 42px; 
             color: #2c3e50; 
@@ -90,31 +90,50 @@
         /* Images */
         .image-box { border-radius: 4px; border: 1px solid #dfe6e9; overflow: hidden; height: 300px; width: 100%; }
         .image-box img { width: 100%; height: 100%; object-fit: cover; }
+        @media print {
+            body { 
+                background-color: white; 
+                margin: 0; 
+                padding: 0; 
+                display: block; 
+            }
+            .slide-container {
+                page-break-after: always;
+                page-break-inside: avoid;
+                box-shadow: none;
+                border: none;
+                width: 1280px;
+                height: 720px;
+                margin: 0;
+            }
+        }
     </style>
 </head>
 <body>
 
 <div class="slide-container" id="slide1">
     <div class="content-area" style="justify-content: center; text-align: left;">
-        <p style="text-transform: uppercase; letter-spacing: 2px; color: #3498db; font-weight: 700; margin-bottom: 10px;">Adaptive Bayesian Inference</p>
-        <h1>Mixture Modeling in <br>Material Science</h1>
+        <h1>Recursive Estimation of ARX Model with Parameters Dependent on High-Dimensional Discrete-Valued Regressors</h1>
         <div style="height: 4px; width: 100px; background: #3498db; margin: 30px 0;"></div>
-        <p style="font-size: 28px;">Bc. Tomáš Procházka, Ing. Miroslav Kárný DrSc.</p>
-        <p style="margin-top: 40px; color: #2c3e50;">Department of Adaptive Systems, Institute of Information Theory and Automation,Czech Academy of Sciences
+        <p style="font-size: 28px;">Miroslav Kárný, <span class='accent'>Tomáš Procházka</span></p>
+        <p style="margin-top: 40px; color: #2c3e50;">Department of Adaptive Systems, Institute of Information Theory and Automation, Czech Academy of Sciences
+</p>
+<p style="margin-top: 12px; color: #2c3e50;">as.utia.cas.cz, prochazka@utia.cas.cz
 </p>
     </div>
 </div>
 
 <div class="slide-container" id="slide2">
-    <h2 class="slide-title">Introduction to the Problem</h2>
+    <h2 class="slide-title">The Problem</h2>
     <div class="content-area">
         <div class="two-column">
             <div>
-                <h3>Physical Machine Settings</h3>
+                <h3>Motivation: Physical Machine Settings</h3>
                 <ul>
                     <li>Materials science experiments involve expensive, time-consuming physical runs.</li>
                     <li><span class="accent">The Problem:</span> Very low amounts of data relative to the configuration space.</li>
-                    <li>Standard regression models overfit or fail to capture LOCALIZED variances.</li>
+                    <li>Standard regression models and NNs overfit and/or fail to capture <span class="accent">localized</span> variances.</li>
+                    <li>Quite common problem of learning with small amounts of data.</li>
                 </ul>
             </div>
         </div>
@@ -127,15 +146,15 @@
         <div class="two-column">
             <div>
                 <h3>Input Features</h3>
-                <p><strong>Settings Vector <span class="mono">g</span>:</strong> Categorical</p>
-                <p style="font-size: 20px; color: #7f8c8d;">e.g., <span class="mono">[frequency, deposition time, substrate, ...]</span></p>
+                <p><strong>Settings Vector <span class="mono">g</span>:</strong> long and categorical</p>
+                <p style="font-size: 20px; color: #7f8c8d;">e.g., <span class="mono">[frequency, substrate, operator, ...]</span></p>
                 
-                <p style="margin-top: 20px;"><strong>Regressors <span class="mono">z</span>:</strong> Numerical</p>
+                <p style="margin-top: 20px;"><strong>Regressors <span class="mono">z</span>:</strong> short and numerical</p>
                 <p style="font-size: 20px; color: #7f8c8d;">Physical continuous inputs (initial and working pressure).</p>
             </div>
             <div>
                 <h3>Output Target</h3>
-                <p><strong>Response <span class="mono">y</span>:</strong> numerical</p>
+                <p><strong>Response <span class="mono">y</span>:</strong> numerical (scalar)</p>
                 <p style="font-size: 20px; color: #7f8c8d;">Observed physical outcome of the setting (thickness).</p>
                 
                 <div class="math-box" style="margin-top: 20px;">
@@ -163,23 +182,23 @@
 <div class="slide-container" id="slide4">
     <h2 class="slide-title">Approach: Mixed Sub-Models</h2>
     <div class="content-area">
-        <p>Instead of one complex model, we build a <span class="accent">Mixture of Experts</span>:</p>
+        <p>Instead of one complex model, we build a <span class="accent">Mixture of 'Experts'</span>:</p>
         <div class="two-column" style="margin-top: 20px;">
             <div>
                 <h3>Sub-Model Unit</h3>
                 <ul>
-                    <li>For each category in each entry of <span class="mono">g</span>: <span class="mono">g_ij</span>.</li>
-                    <li>Simple 1D Linear Adaptive Model.</li>
+                    <li>For each category in <span class="mono">j</span> each entry <span class='mono'>i</span> of <span class="mono">g</span>: <span class="mono">g_ij</span>.</li>
+                    <li>Simple 1D Linear ARX Model.</li>
                     <li>Initiated with <span class="accent">non-informative priors</span>.</li>
-                    <li>Updates via <strong>recursive Bayesian estimation</strong>.</li>
                 </ul>
             </div>
             <div>
                 <h3>Adaptive Learning</h3>
                 <ul>
+                    <li>Updates via <strong>recursive Bayesian estimation</strong>.</li>
                     <li>Employs <span class="accent">Optimal Forgetting</span>.</li>
-                    <li>Adapts to system shifts automatically.</li>
-                    <li>Calculates localized sufficient statistics.</li>
+                    <li>Adapts to the system automatically.</li>
+                    <li>Calculates sub-model's sufficient statistics.</li>
                 </ul>
             </div>
         </div>
@@ -187,33 +206,23 @@
 </div>
 
 <div class="slide-container" id="slide5">
-    <h2 class="slide-title">The Mixing Logic</h2>
+    <h2 class="slide-title">The Combination Logic</h2>
     <div class="content-area">
-        <p>Combining sub-models into a unified forecast by <span class="accent">minimizing cross-entropy</span>:</p>
+        <p>Combining sub-models into a unified forecast by <span class="accent">minimizing relative-entropy</span>:</p>
         <div class="math-box">
-            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block" style="font-size: 1.2em; font-weight: bold;">
+           <math xmlns="http://www.w3.org/1998/Math/MathML" display="block" style="font-size: 1.2em; font-weight: bold;">
                 <mi>F</mi>
                 <mo stretchy="false">(</mo>
-                <msub>
-                    <mi>&#x3D5;</mi>
-                    <mi>i</mi>
-                </msub>
+                <mi>&#x3D5;</mi>
                 <mo stretchy="false">)</mo>
                 <mo>=</mo>
                 <mtext>KLD</mtext>
                 <mo stretchy="false">(</mo>
-                <msub>
-                    <mi>&#x3D5;</mi>
-                    <mi>i</mi>
-                </msub>
+                <mi>&#x3D5;</mi>
                 <mo>&#x2225;</mo>
                 <msub>
                     <mi>&#x3D5;</mi>
-                    <mrow>
-                    <mi>i</mi>
-                    <mo>,</mo>
                     <mn>0</mn>
-                    </mrow>
                 </msub>
                 <mo stretchy="false">)</mo>
                 <mo>&#x2212;</mo>
@@ -221,92 +230,72 @@
                 <munderover>
                     <mo>&#x220F;</mo>
                     <mrow>
-                    <mi>j</mi>
-                    <mo>=</mo>
-                    <mn>1</mn>
+                        <mi>i</mi>
+                        <mo>=</mo>
+                        <mn>1</mn>
                     </mrow>
                     <msub>
-                    <mi>l</mi>
-                    <mi>g</mi>
+                        <mi>l</mi>
+                        <mi>g</mi>
                     </msub>
                 </munderover>
-                <mi>p</mi>
-                <mo stretchy="false">(</mo>
-                <msub>
-                    <mi>y</mi>
-                    <mi>i</mi>
-                </msub>
-                <mo fence="false" stretchy="false">|</mo>
-                <msub>
-                    <mi>z</mi>
-                    <mi>i</mi>
-                </msub>
-                <mo>,</mo>
-                <msub>
-                    <mi>g</mi>
+                <msup>
                     <mrow>
-                    <mi>i</mi>
-                    <mi>j</mi>
+                        <mi>p</mi>
+                        <mo stretchy="false">(</mo>
+                        <mi>y</mi>
+                        <mo fence="false" stretchy="false">|</mo>
+                        <mi>z</mi>
+                        <mo>,</mo>
+                        <msub>
+                            <mi>g</mi>
+                            <mrow>
+                                <mi>i</mi>
+                                <mi>j</mi>
+                            </mrow>
+                        </msub>
+                        <mo>,</mo>
+                        <mi>data</mi>
+                        <mo stretchy="false">)</mo>
                     </mrow>
-                </msub>
-                <mo>,</mo>
-                <msub>
-                    <mi>&#x3B8;</mi>
-                    <mrow>
-                    <mi>i</mi>
-                    <mi>j</mi>
-                    </mrow>
-                </msub>
-                <mo stretchy="false">)</mo>
+                    <msub>
+                        <mi>&#x3D5;</mi>
+                        <mi>i</mi>
+                    </msub>
+                </msup>
                 <mi>d</mi>
                 <mi>y</mi>
-                </math>
+            </math>
         </div>
-        <p style="text-align: center; font-size: 20px;">Optimization yields <span class="accent">Optimal Mixing Weights</span> (&#x3D5;).</p>
+        <p style="text-align: center; font-size: 20px;">The <span class="accent">optimal weights</span> &#x3D5; minimize F(&#x3D5;)</p>
         <ul>
-            <li>Compresses complex posterior logic into a single predictive distribution.</li>
+            <li>Single predictive distribution is a weighted geometric mean of individual predictors:</li>
         </ul>
        <math xmlns="http://www.w3.org/1998/Math/MathML" display="block" style="font-size: 1.2em; font-weight: bold;">
-     <msub>
-    <mover>
-      <mi>y</mi>
-      <mo>^</mo>
-    </mover>
-    <mi>i</mi>
-  </msub>
-        <mo>=</mo>
-        <munderover>
-            <mo>&#x2211;</mo>
-            <mrow>
-            <mi>j</mi>
-            <mo>=</mo>
-            <mn>1</mn>
-            </mrow>
-            <msub>
-            <mi>l</mi>
-            <mi>g</mi>
-            </msub>
-        </munderover>
-        <msub>
-            <mi>&#x3D5;</mi>
-            <mi>j</mi>
-        </msub>
-        <msub>
-            <mover>
-            <mi>y</mi>
-            <mo>^</mo>
-            </mover>
-            <mrow>
-            <mi>i</mi>
-            <mi>j</mi>
-            </mrow>
-        </msub>
-        </math>
+        <mi>p</mi>
+                    <mo stretchy="false">(</mo>
+                    <msub>
+                        <mi>y</mi>
+                    </msub>
+                    <mo fence="false" stretchy="false">|</mo>
+                        <mi>z</mi>
+                    <mo>,</mo>
+                    <msub>
+                        <mi>g</mi>
+                        <mrow>
+                        <mi>i</mi>
+                        <mi>j</mi>
+                        </mrow>
+                    </msub>
+                    <mo>,</mo>
+                        <mi>data</mi>
+                    <mo stretchy="false">)</mo>
+            </math>
             </div>
 </div>
 
 <div class="slide-container" id="slide6">
-    <h2 class="slide-title">The Goal: Recommendation</h2>
+    <h2 class="slide-title">The Learning Goal: Recommendation of settings</h2>
     <div class="content-area">
         <div class="two-column">
             <div>
@@ -314,7 +303,7 @@
                 <p>Search for the <span class="accent">optimal g</span>.</p>
                 <ul>
                     <li>Given a target response <span class="mono">y*</span>.</li>
-                    <li>Exhaustive search over categorical combinations.</li>
+                    <li>Exhaustive search over <span class="mono">g</span> entries maximizing p(y* | z, g, data).</li>
                     <li>Recommends settings to achieve the physical goal.</li>
                 </ul>
             </div>
@@ -326,22 +315,23 @@
     <h2 class="slide-title">Validation: Leave-One-Out (LOO)</h2>
     <div class="content-area">
         <h3>Methodology</h3>
-        <ol>
-            <li>Hold out one observation y, z, g.</li>
-            <li>Train the mixture on all remaining N-1 points.</li>
-            <li>Predict the held-out point using mixed modeling.</li>
+        <ul>
+            <li>Hold out one observation (<span class='mono'>y, z, g</span>).</li>
+            <li>Train the combined model on all remaining N-1 points.</li>
+            <li>Predict the held-out point using found model.</li>
             <li>Repeat for all N observations.</li>
-        </ol>
+        </ul>
         <p style="margin-top: 20px;">Benchmarked against two standard references:</p>
         <ul>
             <li><strong>Mean Baseline:</strong> Average of N-1 observations.</li>
-            <li><strong>Simple OLS:</strong> Ordinary Least Squares on continuous z only.</li>
+            <li><strong>Simple OLS:</strong> Ordinary Least Squares on continuous <span class='mono'>z</span> only.</li>
         </ul>
     </div>
 </div>
-
+<!-- 
 <div class="slide-container" id="slide8">
-    <h2 class="slide-title">Early Results: MAE Benchmarking</h2>
+    <h2 class="slide-title">Early Results: Benchmarking</h2>
+    <p>MAE</p>
     <div class="content-area">
         <div class="chart-row">
             <div class="bar-label">Mean Baseline</div>
@@ -358,19 +348,83 @@
             <div class="bar-outer"><div class="bar-inner" style="width: 37%;"></div></div>
             <div style="margin-left: 10px; font-weight: 700; color: #3498db;">323.22</div>
         </div>
-        <p style="margin-top: 40px; font-weight: 700; color: #27ae60;">Result: Order-of-magnitude reduction in prediction error.</p>
+        <p>RMSE</p>
+        <div class="chart-row">
+            <div class="bar-label">Mean Baseline</div>
+            <div class="bar-outer"><div class="bar-inner" style="width: 39%; background: #95a5a6;"></div></div>
+            <div style="margin-left: 10px; font-weight: 700;">511.78</div>
+        </div>
+        <div class="chart-row">
+            <div class="bar-label">Simple OLS</div>
+            <div class="bar-outer"><div class="bar-inner" style="width: 100%; background: #7f8c8d;"></div></div>
+            <div style="margin-left: 10px; font-weight: 700;">1421.08</div>
+        </div>
+        <div class="chart-row" style="margin-top: 20px;">
+            <div class="bar-label" style="color: #3498db;">Proposed Mixture</div>
+            <div class="bar-outer"><div class="bar-inner" style="width: 34%;"></div></div>
+            <div style="margin-left: 10px; font-weight: 700; color: #3498db;">486.10</div>
+        </div>
+    </div>
+</div> -->
+
+<div class="slide-container" id="slide8">
+    <h2 class="slide-title">Validation: Baseline Benchmarks (Mean)</h2>
+    <div class="content-area" style="align-items: center; justify-content: center; text-align: center;">
+        <div style="text-align: center; width: 100%;">
+            <h3 style="margin-bottom: 15px; font-size: 32px;">Mean Baseline</h3>
+            <img src="mean_predictions.png" alt="Mean Baseline" style="width: 100%; object-fit: contain; border: 1px solid #dfe6e9; border-radius: 4px;">
+        </div>
     </div>
 </div>
 
 <div class="slide-container" id="slide9">
+    <h2 class="slide-title">Validation: Baseline Benchmarks (OLS)</h2>
+    <div class="content-area" style="align-items: center; justify-content: center; text-align: center;">
+        <div style="text-align: center; width: 100%;">
+            <h3 style="margin-bottom: 15px; font-size: 32px;">Simple OLS</h3>
+            <img src="OLS_predictions.png" alt="OLS Baseline" style="width: 100%; object-fit: contain; border: 1px solid #dfe6e9; border-radius: 4px;">
+        </div>
+    </div>
+</div>
+
+<div class="slide-container" id="slide10">
+    <h2 class="slide-title">Validation: Mixture Model</h2>
+    <div class="content-area" style="align-items: center; justify-content: center; text-align: center;">
+        <h3 style="margin-bottom: 20px; font-size: 32px; color: #3498db;">Proposed Mixture Approach</h3>
+        <img src="mixed_predictions_with_se.png" alt="Mixture Model" style="width: 90%; max-height: 450px; object-fit: contain; border: 3px solid #3498db; border-radius: 8px;">
+    </div>
+</div>
+
+<div class="slide-container" id="slide11">
+    <h2 class="slide-title">Future Work & Conclusions</h2>
+    <div class="content-area">
+        <ul>
+            <li>
+                <span class="accent">Work in Progress:</span> 
+                Refining the recursive estimation of the ARX parameters and testing robustness on larger categorical dimensions.
+            </li>
+            <li>
+                <span class="accent">Hierarchical Priors:</span> 
+                Worth exploring to share information across categories with physical similarities, further mitigating data scarcity.
+            </li>
+            <li>
+                <span class="accent">A Universal Challenge:</span> 
+                This is a hard and common problem across multiple high-stakes industries where data collection is expensive:
+                <ul style="margin-left: 40px; margin-top: 15px; font-size: 20px;">
+                    <li><strong>Semiconductors:</strong> Photolithography settings and wafer variability.</li>
+                    <li><strong>Aerospace:</strong> Turbine blade alloy composition and additive manufacturing.</li>
+                    <li><strong>Pharmaceuticals:</strong> Batch process optimization and bioreactor control.</li>
+                    <li><strong>Precision Engineering:</strong> CNC machining tolerances with variable tool wear.</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="slide-container" id="slide12">
     <div class="content-area" style="justify-content: center; text-align: center;">
         <h2 style="font-size: 80px; margin-bottom: 20px;">Thank you</h2>
         <p style="font-size: 32px; color: #3498db;">Questions?</p>
-        
-        <div style="margin-top: 50px; text-align: left; padding: 30px; border-top: 1px solid #dfe6e9; width: 80%; margin-left: auto; margin-right: auto;">
-            <h3 style="font-size: 20px; color: #b2bec3;">Bibliography</h3>
-            <p style="font-size: 16px;">[1] Kárný, M. & Procházka, T. "Recursive Estimation of ARX Model with Parameters Dependent on High-Dimensional Discrete Regressors."</p>
-        </div>
     </div>
 </div>
 
