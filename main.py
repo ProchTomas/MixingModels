@@ -31,7 +31,7 @@ l_z = 3  # 2 continuous variables + 1 intercept
 n = 1    # Response dimension
 w = 1.0 / l_g  # Uniform weighting for mixing
 
-se = False
+se = True
 
 # --------------------------------
 # STRUCTURE ESTIMATION (optional)
@@ -47,7 +47,7 @@ else:
 # LOO (leave-one-out)
 # --------------------------------
 
-trained_models, preds, rmse, mae, log_like = util.perform_loo_cv(
+preds, rmse, mae, log_like = util.perform_loo_cv(
     y_data,
     z_data,
     optimal_g_data,
@@ -59,7 +59,7 @@ trained_models, preds, rmse, mae, log_like = util.perform_loo_cv(
 
 mean_preds, ols_preds = util.baseline_loo_cv(y_data, z_data)
 
-eval.plot_loo_validation(y_data, preds, title_suffix="(Mixing)")
+eval.plot_loo_validation(y_data, preds, title_suffix="(Pooling)")
 print("--------------------------------")
 eval.plot_loo_validation(y_data, mean_preds, title_suffix="(Mean Baseline)")
 eval.plot_loo_validation(y_data, ols_preds, title_suffix="(OLS Baseline)")
@@ -67,11 +67,15 @@ eval.plot_loo_validation(y_data, ols_preds, title_suffix="(OLS Baseline)")
 target_response = 450.0
 z_current = np.array([1.0, 6.5e-06, 7.1e-05]) # Example current regressor
 
-optimal_g, predicted_y = util.find_optimal_g(
-    target_response,
-    z_current,
-    trained_models,
-    l_g,
-    mixing_method='distribution_mixing'
-)
+# --------------------------------
+# OPTIMAL SETTINGS FINDER
+# --------------------------------
+
+# optimal_g, predicted_y = util.find_optimal_g(
+#     target_response,
+#     z_current,
+#     trained_models,
+#     l_g,
+#     mixing_method='distribution_mixing'
+# )
 

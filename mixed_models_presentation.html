@@ -157,32 +157,16 @@
                 <p><strong>Response <span class="mono">y</span>:</strong> numerical (scalar)</p>
                 <p style="font-size: 20px; color: #7f8c8d;">Observed physical outcome of the setting (thickness).</p>
                 
-                <div class="math-box" style="margin-top: 20px;">
-                    <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
-                        <msub>
-                            <mover>
-                            <mi>y</mi>
-                            <mo>^</mo>
-                            </mover>
-                        </msub>
-                        <mo>&#x223C;</mo>
-                        <mi>p</mi>
-                        <mo stretchy="false">(</mo>
-                        <mi>y</mi>
-                        <mo fence="false" stretchy="false">|</mo>
-                        <mi>z, g, &#x398</mi>
-                        <mo stretchy="false">)</mo>
-                    </math>
-                </div>
+                <p style="font-size: 20px; color: #7f8c8d;">Learning of p(y | z, g, &#x398) needs too much data</p>
             </div>
         </div>
     </div>
 </div>
 
 <div class="slide-container" id="slide4">
-    <h2 class="slide-title">Approach: Mixed Sub-Models</h2>
+    <h2 class="slide-title">Approach: Pooled Sub-Models</h2>
     <div class="content-area">
-        <p>Instead of one complex model, we build a <span class="accent">Mixture of 'Experts'</span>:</p>
+        <p>Instead of one complex model, we build a <span class="accent">Pool of 'Experts'</span>:</p>
         <div class="two-column" style="margin-top: 20px;">
             <div>
                 <h3>Sub-Model Unit</h3>
@@ -230,13 +214,10 @@
                 <munderover>
                     <mo>&#x220F;</mo>
                     <mrow>
-                        <mi>i</mi>
-                        <mo>=</mo>
-                        <mn>1</mn>
+                        <mi>i,j</mi>
                     </mrow>
                     <msub>
-                        <mi>l</mi>
-                        <mi>g</mi>
+                        <mi></mi>
                     </msub>
                 </munderover>
                 <msup>
@@ -260,7 +241,7 @@
                     </mrow>
                     <msub>
                         <mi>&#x3D5;</mi>
-                        <mi>i</mi>
+                        <mi>ij</mi>
                     </msub>
                 </msup>
                 <mi>d</mi>
@@ -282,14 +263,44 @@
                     <mo>,</mo>
                     <msub>
                         <mi>g</mi>
-                        <mrow>
-                        <mi>i</mi>
-                        <mi>j</mi>
-                        </mrow>
                     </msub>
                     <mo>,</mo>
                         <mi>data</mi>
                     <mo stretchy="false">)</mo>
+                    <mi>&#8733</mi>
+                    <munderover>
+                    <mo>&#x220F;</mo>
+                    <mrow>
+                        <mi>i,j</mi>
+                    </mrow>
+                    <msub>
+                        <mi></mi>
+                    </msub>
+                </munderover>
+                <msup>
+                    <mrow>
+                        <mi>p</mi>
+                        <mo stretchy="false">(</mo>
+                        <mi>y</mi>
+                        <mo fence="false" stretchy="false">|</mo>
+                        <mi>z</mi>
+                        <mo>,</mo>
+                        <msub>
+                            <mi>g</mi>
+                            <mrow>
+                                <mi>i</mi>
+                                <mi>j</mi>
+                            </mrow>
+                        </msub>
+                        <mo>,</mo>
+                        <mi>data</mi>
+                        <mo stretchy="false">)</mo>
+                    </mrow>
+                    <msub>
+                        <mi>&#x3D5;</mi>
+                        <mi>ij</mi>
+                    </msub>
+                </msup>
             </math>
             </div>
 </div>
@@ -388,9 +399,9 @@
 </div>
 
 <div class="slide-container" id="slide10">
-    <h2 class="slide-title">Validation: Mixture Model</h2>
+    <h2 class="slide-title">Validation: Pooled Model</h2>
     <div class="content-area" style="align-items: center; justify-content: center; text-align: center;">
-        <h3 style="margin-bottom: 20px; font-size: 32px; color: #3498db;">Proposed Mixture Approach</h3>
+        <h3 style="margin-bottom: 20px; font-size: 32px; color: #3498db;">Proposed Pooling Approach</h3>
         <img src="mixed_predictions_with_se.png" alt="Mixture Model" style="width: 90%; max-height: 450px; object-fit: contain; border: 3px solid #3498db; border-radius: 8px;">
     </div>
 </div>

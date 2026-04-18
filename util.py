@@ -578,7 +578,7 @@ def perform_loo_cv(y_data, z_data, g_data, mixing_method='forecast_mixing', solv
       print(f"\n--- LOO-CV Results ---")
       print(f"RMSE: {rmse:.2f} | MAE: {mae:.2f}")
 
-    return models, predictions, rmse, mae, np.sum(log_likelihoods)
+    return predictions, rmse, mae, np.sum(log_likelihoods)
 
 def greedy_forward_selection(y_data, z_data, g_data, mixing_method='forecast_mixing', solver_method='analytical'):
     """
