@@ -171,7 +171,7 @@
             <div>
                 <h3>Sub-Model Unit</h3>
                 <ul>
-                    <li>For each category in <span class="mono">j</span> each entry <span class='mono'>i</span> of <span class="mono">g</span>: <span class="mono">g_ij</span>.</li>
+                    <li>For each category <span class="mono">j</span>, in each entry <span class='mono'>i</span> of <span class="mono">g</span>: <span class="mono">g_ij</span>.</li>
                     <li>Simple 1D Linear ARX Model.</li>
                     <li>Initiated with <span class="accent">non-informative priors</span>.</li>
                 </ul>
@@ -192,6 +192,57 @@
 <div class="slide-container" id="slide5">
     <h2 class="slide-title">The Combination Logic</h2>
     <div class="content-area">
+            <p>Single predictive distribution is a weighted geometric mean of individual predictors:</p>
+       <math xmlns="http://www.w3.org/1998/Math/MathML" display="block" style="font-size: 1.2em; font-weight: bold;">
+        <mi>p</mi>
+                    <mo stretchy="false">(</mo>
+                    <msub>
+                        <mi>y</mi>
+                    </msub>
+                    <mo fence="false" stretchy="false">|</mo>
+                        <mi>z</mi>
+                    <mo>,</mo>
+                    <msub>
+                        <mi>g</mi>
+                    </msub>
+                    <mo>,</mo>
+                        <mi>data</mi>
+                    <mo stretchy="false">)</mo>
+                    <mi>&#8733</mi>
+                    <munderover>
+                    <mo>&#x220F;</mo>
+                    <mrow>
+                        <mi>i,j</mi>
+                    </mrow>
+                    <msub>
+                        <mi></mi>
+                    </msub>
+                </munderover>
+                <msup>
+                    <mrow>
+                        <mi>p</mi>
+                        <mo stretchy="false">(</mo>
+                        <mi>y</mi>
+                        <mo fence="false" stretchy="false">|</mo>
+                        <mi>z</mi>
+                        <mo>,</mo>
+                        <msub>
+                            <mi>g</mi>
+                            <mrow>
+                                <mi>i</mi>
+                                <mi>j</mi>
+                            </mrow>
+                        </msub>
+                        <mo>,</mo>
+                        <mi>data</mi>
+                        <mo stretchy="false">)</mo>
+                    </mrow>
+                    <msub>
+                        <mi>&#x3D5;</mi>
+                        <mi>ij</mi>
+                    </msub>
+                </msup>
+            </math>
         <p>Combining sub-models into a unified forecast by <span class="accent">minimizing relative-entropy</span>:</p>
         <div class="math-box">
            <math xmlns="http://www.w3.org/1998/Math/MathML" display="block" style="font-size: 1.2em; font-weight: bold;">
@@ -248,61 +299,8 @@
                 <mi>y</mi>
             </math>
         </div>
-        <p style="text-align: center; font-size: 20px;">The <span class="accent">optimal weights</span> &#x3D5; minimize F(&#x3D5;)</p>
-        <ul>
-            <li>Single predictive distribution is a weighted geometric mean of individual predictors:</li>
-        </ul>
-       <math xmlns="http://www.w3.org/1998/Math/MathML" display="block" style="font-size: 1.2em; font-weight: bold;">
-        <mi>p</mi>
-                    <mo stretchy="false">(</mo>
-                    <msub>
-                        <mi>y</mi>
-                    </msub>
-                    <mo fence="false" stretchy="false">|</mo>
-                        <mi>z</mi>
-                    <mo>,</mo>
-                    <msub>
-                        <mi>g</mi>
-                    </msub>
-                    <mo>,</mo>
-                        <mi>data</mi>
-                    <mo stretchy="false">)</mo>
-                    <mi>&#8733</mi>
-                    <munderover>
-                    <mo>&#x220F;</mo>
-                    <mrow>
-                        <mi>i,j</mi>
-                    </mrow>
-                    <msub>
-                        <mi></mi>
-                    </msub>
-                </munderover>
-                <msup>
-                    <mrow>
-                        <mi>p</mi>
-                        <mo stretchy="false">(</mo>
-                        <mi>y</mi>
-                        <mo fence="false" stretchy="false">|</mo>
-                        <mi>z</mi>
-                        <mo>,</mo>
-                        <msub>
-                            <mi>g</mi>
-                            <mrow>
-                                <mi>i</mi>
-                                <mi>j</mi>
-                            </mrow>
-                        </msub>
-                        <mo>,</mo>
-                        <mi>data</mi>
-                        <mo stretchy="false">)</mo>
-                    </mrow>
-                    <msub>
-                        <mi>&#x3D5;</mi>
-                        <mi>ij</mi>
-                    </msub>
-                </msup>
-            </math>
-            </div>
+        <p style="text-align: center; font-size: 20px;">The <span class="accent">optimal weights</span> &#x3D5; minimize F(&#x3D5;)</p>  
+    </div>
 </div>
 
 <div class="slide-container" id="slide6">
@@ -437,6 +435,17 @@
         <h2 style="font-size: 80px; margin-bottom: 20px;">Thank you</h2>
         <p style="font-size: 32px; color: #3498db;">Questions?</p>
     </div>
+</div>
+
+<div class="slide-container" id="slide13">
+    <div class="content-area">
+        <h2 class="slide-title">Citations</h2>
+        <ul>
+            <p>Kárný Miroslav: Optimised conjugate prior for model structure estimation in the exponential family, Expert Systems With Applications, DOI: 10.1016/j.eswa.2025.127716 [2025]</p>
+            <p>Kárný Miroslav: Optimized geometric pooling of probabilities for information fusion and forgetting, Automatica 177 DOI: 10.1016/j.automatica.2025.112337 [2025]</p>
+        </ul>
+    </div>
+
 </div>
 
 </body>
