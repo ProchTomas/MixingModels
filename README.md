@@ -4,7 +4,7 @@ g - categorical: each value has its own small model
 z - continuous: regressor for the given models
 y - response variable
 
-1.5 Generate optimal prior (optional)
+1.5. Generate optimal prior (optional)
    ---------------------
 the code is able to provide an optimized prior statistics, however for very low amounts of data, this procedure
 tends to overfit, and therefore uninformative prior is better for forecasting and optimizing input parameters
