@@ -5,6 +5,7 @@ from scipy.optimize import least_squares, root_scalar, minimize
 from numpy.linalg import det as det
 from itertools import combinations
 import itertools
+import pickle
 
 def get_upper_G(V, label=""):
   """
@@ -437,22 +438,192 @@ def init_model_stats(dim=4):
     nu_0 = float(dim)+1.0 # Ensure nu > l_z - 2
     return V_0, nu_0
 
-def initialize_models(current_g_data, l_z=3, n=1):
+# ------------------------------------------------------------------
+# OPTIMAL (EMPIRICAL) PRIOR
+# ------------------------------------------------------------------
+# Builds an informative prior (V_0, G_0, delta_0) from data, matching the
+# [y, z] sufficient-statistic structure used throughout this module
+# (response block of size n, regressor block of size l_z, ordering [y, z]).
+# Old time-series notation maps as: N = n (dim y), rho = l_z (dim x).
+
+def func_for_delta0(t_bar, mu, delta0):
+    # delta0 must be > 0
+    if delta0 <= 0:
+        return np.nan  # force solver to avoid non-positive domain
+    term1 = 0.5 * np.log(mu)
+    term2 = (0.5 * (1 - mu) * t_bar) / (t_bar + (1 - mu) * delta0)
+    term3 = np.log(0.5 * delta0) - digamma(0.5 * delta0)
+    term4 = -np.log(0.5 * (t_bar + delta0)) + digamma(0.5 * (t_bar + delta0))
+    return term1 + term2 + term3 + term4
+
+def find_delta0_integer(t_bar, mu, rho, max_int=1000):
+    """
+    Find integer delta0 >= rho+1 that solves func_for_delta0(.) = 0
+    (i.e. minimizes |func_for_delta0|).
+    """
+    candidates = np.arange(rho + 1, max_int + 1)
+    values = [func_for_delta0(t_bar, mu, d) for d in candidates]
+    idx = np.nanargmin(np.abs(values))
+    return candidates[idx], values[idx]
+
+def opt_prior(y_data, z_data, mu=0.5, n=1, l_z=None, t_bar=None, V_init_scale=1e-6):
+    """
+    Calculate the optimal (empirical) prior (V_0, G_0, delta_0) from data.
+
+    Builds the empirical sufficient statistic V_bar = sum_t d_t d_t^T where
+    d_t = [y_t, 1, z1_t, z2_t, ...] (intercept + continuous regressors), then
+    shrinks it towards a prior with strength controlled by `mu`.
+
+    arg:
+        y_data: response vector, shape (T,)
+        z_data: continuous regressors, shape (l_z-1, T) (intercept added here)
+        mu:     shrinkage parameter in (0, 1)
+        n:      response dimension (default 1)
+        l_z:    regressor dimension incl. intercept (default z_data.shape[0]+1)
+        t_bar:  number of data points used to accumulate V_bar (default = T)
+        V_init_scale: tiny diagonal load on V_bar for numerical stability
+    returns:
+        V_0:     prior sufficient-statistic matrix, shape (n+l_z, n+l_z)
+        G_0:     upper-triangular factor with V_0 ~ G_0 @ G_0.T
+        delta0:  integer prior counting statistic (plays role of nu_0)
+    """
+    y_data = np.asarray(y_data, dtype=float)
+    z_data = np.asarray(z_data, dtype=float)
+
+    T = y_data.shape[0]
+    if t_bar is None:
+        t_bar = T
+    if l_z is None:
+        l_z = z_data.shape[0] + 1  # +1 for the intercept column
+
+    N = n        # response block size (old 'N')
+    rho = l_z    # regressor block size (old 'rho')
+    dim = N + rho
+
+    # Accumulate empirical sufficient statistic exactly (start from a tiny V_0
+    # for numerical stability, matching the original implementation).
+    V_bar = np.eye(dim) * V_init_scale
+    for t in range(t_bar):
+        z_t = np.concatenate(([1.0], z_data[:, t]))   # [1, z1_t, z2_t, ...]
+        y_t = np.atleast_1d(y_data[t])
+        d = np.concatenate((y_t, z_t))
+        V_bar += np.outer(d, d)
+
+    # Upper-triangular factor consistent with the module's convention V = G G^T.
+    G_bar = get_upper_G(V_bar, label="opt_prior")
+
+    # Solve for the integer prior count delta0.
+    try:
+        delta0, _ = find_delta0_integer(t_bar, mu, rho)
+        delta0 = int(delta0)
+    except Exception as e:
+        print("[opt_prior] delta0 solver failed:", e)
+        delta0 = rho + 1
+
+    # Block partition (ordering [y, z]).
+    Vyy_bar = V_bar[:N, :N]
+    Vyx_bar = V_bar[:N, N:]
+    Vxx_bar = V_bar[N:, N:]
+
+    Gyy_bar = G_bar[:N, :N]
+    Gyx_bar = G_bar[:N, N:]
+    Gxx_bar = G_bar[N:, N:]
+
+    Vyy0 = (mu * delta0 / (t_bar + (1 - mu) * delta0) * Vyy_bar +
+            mu * t_bar / (t_bar * (1 - mu) + (1 - mu) ** 2 * delta0)
+            * Vyx_bar @ np.linalg.inv(Vxx_bar) @ Vyx_bar.T)
+    Vyx0 = mu / (1 - mu) * Vyx_bar
+    Vxx0 = mu / (1 - mu) * Vxx_bar
+
+    Gyy0 = np.sqrt(mu * delta0 / (t_bar + (1 - mu) * delta0)) * Gyy_bar
+    Gyx0 = np.sqrt(mu / (1 - mu)) * Gyx_bar
+    Gxx0 = np.sqrt(mu / (1 - mu)) * Gxx_bar
+
+    V_0 = np.block([[Vyy0, Vyx0], [Vyx0.T, Vxx0]])
+    G_0 = np.block([[Gyy0, Gyx0], [np.zeros_like(Gyx0.T), Gxx0]])
+
+    return V_0, G_0, delta0
+
+def compute_optimal_prior(y_data, z_data, mu=0.5, n=1, l_z=3, t_bar=None, verbose=True):
+    """
+    Wrapper around opt_prior returning a prior dict ready for use in
+    initialize_models / perform_loo_cv.
+    """
+    V_0, G_0, delta0 = opt_prior(y_data, z_data, mu=mu, n=n, l_z=l_z, t_bar=t_bar)
+    prior = {
+        'V_0': V_0,
+        'G_0': G_0,
+        'nu_0': float(delta0),   # used as the prior counting statistic
+        'mu': mu,
+        'n': n,
+        'l_z': l_z,
+    }
+    if verbose:
+        print(f"[compute_optimal_prior] mu={mu}, delta0(nu_0)={delta0}, "
+              f"V_0 eigvals: {np.linalg.eigvalsh(V_0)}")
+    return prior
+
+def save_prior(prior, path='optimal_prior.pkl'):
+    """Persist an optimal prior to disk for reuse in a later run."""
+    with open(path, 'wb') as f:
+        pickle.dump(prior, f)
+    print(f"[save_prior] Saved optimal prior to '{path}'")
+    return path
+
+def load_prior(path='optimal_prior.pkl'):
+    """Load a previously saved optimal prior from disk."""
+    with open(path, 'rb') as f:
+        prior = pickle.load(f)
+    print(f"[load_prior] Loaded optimal prior from '{path}' "
+          f"(mu={prior.get('mu')}, nu_0={prior.get('nu_0')})")
+    return prior
+
+def resolve_prior(prior_mode, y_data=None, z_data=None, path='optimal_prior.pkl',
+                  mu=0.5, n=1, l_z=3, t_bar=None):
+    """
+    Single entry point to obtain a prior to feed into perform_loo_cv.
+
+    prior_mode:
+        None / 'none'  -> non-informative default (returns None)
+        'generate'     -> compute empirical prior from data, return it (not saved)
+        'save'         -> compute empirical prior from data, save to `path`, return it
+        'load'         -> load a previously saved prior from `path`
+    """
+    if prior_mode in (None, 'none'):
+        return None
+    if prior_mode == 'load':
+        return load_prior(path)
+    if prior_mode in ('generate', 'save'):
+        if y_data is None or z_data is None:
+            raise ValueError("y_data and z_data are required to generate a prior.")
+        prior = compute_optimal_prior(y_data, z_data, mu=mu, n=n, l_z=l_z, t_bar=t_bar)
+        if prior_mode == 'save':
+            save_prior(prior, path)
+        return prior
+    raise ValueError(f"Unknown prior_mode: {prior_mode!r}")
+
+def initialize_models(current_g_data, l_z=3, n=1, prior=None):
     mod = {}
     current_l_g = current_g_data.shape[0]
 
     for i in range(current_l_g):
         unique_vals = np.unique(current_g_data[i])
         for val in unique_vals:
-            V_0, nu_0 = init_model_stats(dim=l_z + n)
-            G_0 = get_upper_G(V_0)
+            if prior is not None:
+                # Informative empirical prior shared across all (i, val) models.
+                G_0 = np.array(prior['G_0'], dtype=float)
+                nu_0 = float(prior['nu_0'])
+            else:
+                # Non-informative default.
+                V_0, nu_0 = init_model_stats(dim=l_z + n)
+                G_0 = get_upper_G(V_0)
             mod[(i, val)] = {
-                'G': G_0, 'nu': nu_0,
-                'G_0': G_0, 'nu_0': nu_0
+                'G': G_0.copy(), 'nu': nu_0,
+                'G_0': G_0.copy(), 'nu_0': nu_0
             }
     return mod
 
-def perform_loo_cv(y_data, z_data, g_data, mixing_method='forecast_mixing', solver_method='analytical', opt_prior_phi=False, verbose=False):
+def perform_loo_cv(y_data, z_data, g_data, mixing_method='forecast_mixing', solver_method='analytical', opt_prior_phi=False, verbose=False, prior=None):
     """
     Executes true Leave-One-Out Cross-Validation.
     Trains on N-1 points, predicts the held-out point.
@@ -470,8 +641,9 @@ def perform_loo_cv(y_data, z_data, g_data, mixing_method='forecast_mixing', solv
     print(f"Starting LOO-CV ({mixing_method} | {solver_method})...")
 
     for test_idx in range(num_steps):
-        # 1. Generate non-informative prior for the proper models
-        models = initialize_models(g_data, l_z, n)
+        # 1. Generate the prior for the proper models (informative if `prior`
+        #    is supplied, otherwise the non-informative default).
+        models = initialize_models(g_data, l_z, n, prior=prior)
 
         # 2. Train on all data EXCEPT the test_idx
         for t in range(num_steps):
@@ -580,7 +752,7 @@ def perform_loo_cv(y_data, z_data, g_data, mixing_method='forecast_mixing', solv
 
     return predictions, rmse, mae, np.sum(log_likelihoods)
 
-def greedy_forward_selection(y_data, z_data, g_data, mixing_method='forecast_mixing', solver_method='analytical'):
+def greedy_forward_selection(y_data, z_data, g_data, mixing_method='forecast_mixing', solver_method='analytical', prior=None):
     """
     Finds a strong combination of g_data rows using Greedy Forward Selection
     to maximize the sum of log-likelihoods (-> fast). Starts with no rows and adds one at a time that improves the model the most.
@@ -607,7 +779,8 @@ def greedy_forward_selection(y_data, z_data, g_data, mixing_method='forecast_mix
             _, _, _, sum_log_lik = perform_loo_cv(
                 y_data, z_data, g_subset,
                 mixing_method=mixing_method,
-                solver_method=solver_method
+                solver_method=solver_method,
+                prior=prior,
             )
 
             if sum_log_lik > best_step_ll:
@@ -631,7 +804,7 @@ def greedy_forward_selection(y_data, z_data, g_data, mixing_method='forecast_mix
 
     return selected_rows, best_overall_ll
 
-def greedy_backward_elimination(y_data, z_data, g_data, mixing_method='forecast_mixing', solver_method='analytical'):
+def greedy_backward_elimination(y_data, z_data, g_data, mixing_method='forecast_mixing', solver_method='analytical', prior=None):
     """
     Finds a strong combination of g_data rows using Greedy Backward Elimination.
     Starts with all rows and iteratively removes the one whose removal improves the model the most (-> relatively fast).
@@ -646,7 +819,8 @@ def greedy_backward_elimination(y_data, z_data, g_data, mixing_method='forecast_
     _, _, _, best_overall_ll = perform_loo_cv(
         y_data, z_data, g_data,
         mixing_method=mixing_method,
-        solver_method=solver_method
+        solver_method=solver_method,
+        prior=prior
     )
     print(f"Baseline Log-Likelihood (All rows): {best_overall_ll:.4f}")
 
@@ -662,7 +836,8 @@ def greedy_backward_elimination(y_data, z_data, g_data, mixing_method='forecast_
             _, _, _, sum_log_lik = perform_loo_cv(
                 y_data, z_data, g_subset,
                 mixing_method=mixing_method,
-                solver_method=solver_method
+                solver_method=solver_method,
+                prior=prior
             )
 
             # Find the removal that results in the HIGHEST remaining log-likelihood
@@ -685,7 +860,7 @@ def greedy_backward_elimination(y_data, z_data, g_data, mixing_method='forecast_
 
     return selected_rows, best_overall_ll
 
-def optimize_g_rows(y_data, z_data, g_data, mixing_method='forecast_mixing', solver_method='analytical'):
+def optimize_g_rows(y_data, z_data, g_data, mixing_method='forecast_mixing', solver_method='analytical', prior=None):
     """
     Finds the global optimum in combination of g_data rows that maximizes the sum of log-likelihoods
     (minimizes the negative sum). Uses exhaustive search (goes through all possible combinations -> slow).
@@ -708,7 +883,8 @@ def optimize_g_rows(y_data, z_data, g_data, mixing_method='forecast_mixing', sol
                 z_data,
                 g_subset,
                 mixing_method=mixing_method,
-                solver_method=solver_method
+                solver_method=solver_method,
+                prior=prior
             )
 
             # Update if we find a higher (less negative) log-likelihood
@@ -723,22 +899,22 @@ def optimize_g_rows(y_data, z_data, g_data, mixing_method='forecast_mixing', sol
 
     return best_combo, best_log_lik
 
-def elimination(y_data, z_data, g_data, technique):
+def elimination(y_data, z_data, g_data, technique, prior=None):
     optimal_rows = None
     best_ll = -np.inf
     if technique == 'global':
         # goes through all the possible combinations (very slow)
-        optimal_rows, best_ll = optimize_g_rows(y_data, z_data, g_data)
+        optimal_rows, best_ll = optimize_g_rows(y_data, z_data, g_data, prior=prior)
     if technique == 'backward':
         # starts with full g and adds rows based on log-likelihood (RECOMMENDED)
-        optimal_rows, best_ll = greedy_backward_elimination(y_data, z_data, g_data)
+        optimal_rows, best_ll = greedy_backward_elimination(y_data, z_data, g_data, prior=prior)
     if technique == 'forward':
         # starts with empty g and adds rows based on log-likelihood
-        optimal_rows, best_ll = greedy_forward_selection(y_data, z_data, g_data)
+        optimal_rows, best_ll = greedy_forward_selection(y_data, z_data, g_data, prior=prior)
 
     return optimal_rows, best_ll
 
-def baseline_loo_cv(y_data, z_data):
+def baseline_loo_cv(y_data, z_data, verbose):
     """
     Computes Leave-One-Out predictions for two simple baselines:
     1. Global Mean of N-1 observations
@@ -773,8 +949,8 @@ def baseline_loo_cv(y_data, z_data):
         except np.linalg.LinAlgError:
             # Fallback to mean if the matrix is completely singular
             ols_preds[test_idx] = np.mean(y_train)
-
-        print(f"Fold {test_idx:2d} | Actual: {y_data[test_idx]:7.4f} | Mean: {mean_preds[test_idx]:7.4f} | OLS: {ols_preds[test_idx]:7.4f}")
+        if verbose:
+            print(f"Fold {test_idx:2d} | Actual: {y_data[test_idx]:7.4f} | Mean: {mean_preds[test_idx]:7.4f} | OLS: {ols_preds[test_idx]:7.4f}")
 
     # Compute overall metrics
     mean_rmse = np.sqrt(np.mean((mean_preds - y_data)**2))

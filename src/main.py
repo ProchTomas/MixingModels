@@ -31,14 +31,42 @@ l_z = 3  # 2 continuous variables + 1 intercept
 n = 1    # Response dimension
 w = 1.0 / l_g  # Uniform weighting for mixing
 
-se = True
+se = False
+
+# --------------------------------
+# OPTIMAL PRIOR (optional)
+# --------------------------------
+# Select how the informative empirical prior is handled:
+#   None / 'none' -> non-informative default prior
+#   'generate'    -> build the prior from data for this run only (not saved)
+#   'save'        -> build the prior from data AND save it to PRIOR_PATH
+#   'load'        -> load a previously saved prior from PRIOR_PATH
+#
+# Note: with 'generate'/'save' the prior is built from the FULL dataset and
+# then reused in every LOO fold, so each point is effectively seen twice.
+# That is acceptable here (it is an informative prior, not a held-out test).
+
+prior_mode = 'none'          # 'none' | 'generate' | 'save' | 'load'
+PRIOR_PATH = 'optimal_prior.pkl'
+mu = 0.5                     # shrinkage parameter in (0, 1)
+
+prior = util.resolve_prior(
+    prior_mode,
+    y_data=y_data,
+    z_data=z_data,
+    path=PRIOR_PATH,
+    mu=mu,
+    n=n,
+    l_z=l_z,
+)
 
 # --------------------------------
 # STRUCTURE ESTIMATION (optional)
 # --------------------------------
+
 if se:
     elimination_technique = ['global', 'forward', 'backward'] # backward is RECOMMENDED
-    optimal_rows, best_ll = util.elimination(y_data, z_data, g_data, elimination_technique[2])
+    optimal_rows, best_ll = util.elimination(y_data, z_data, g_data, elimination_technique[2], prior=prior)
     optimal_g_data = g_data[optimal_rows, :]
 else:
     optimal_g_data = g_data
@@ -54,12 +82,13 @@ preds, rmse, mae, log_like = util.perform_loo_cv(
     mixing_method='forecast_mixing',
     solver_method='analytical',
     opt_prior_phi=False,
-    verbose=False,
+    verbose=True,
+    prior=prior,
 )
 
-mean_preds, ols_preds = util.baseline_loo_cv(y_data, z_data)
+mean_preds, ols_preds = util.baseline_loo_cv(y_data, z_data, True)
 
-eval.plot_loo_validation(y_data, preds, title_suffix="(Pooling)")
+eval.plot_loo_validation(y_data, preds, title_suffix="(Mixing)")
 print("--------------------------------")
 eval.plot_loo_validation(y_data, mean_preds, title_suffix="(Mean Baseline)")
 eval.plot_loo_validation(y_data, ols_preds, title_suffix="(OLS Baseline)")
@@ -68,7 +97,7 @@ target_response = 450.0
 z_current = np.array([1.0, 6.5e-06, 7.1e-05]) # Example current regressor
 
 # --------------------------------
-# OPTIMAL SETTINGS FINDER
+# OPTIMAL SETTINGS
 # --------------------------------
 
 # optimal_g, predicted_y = util.find_optimal_g(
@@ -78,4 +107,3 @@ z_current = np.array([1.0, 6.5e-06, 7.1e-05]) # Example current regressor
 #     l_g,
 #     mixing_method='distribution_mixing'
 # )
-
